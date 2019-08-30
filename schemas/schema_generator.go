@@ -2,12 +2,10 @@ package main
 
 import (
 	"context"
-	"net/http"
-	"time"
 	"fmt"
+	"time"
 
 	"github.com/samsarahq/thunder/graphql"
-	"github.com/samsarahq/thunder/graphql/graphiql"
 	"github.com/samsarahq/thunder/graphql/introspection"
 	"github.com/samsarahq/thunder/graphql/schemabuilder"
 	"github.com/samsarahq/thunder/reactive"
@@ -24,7 +22,6 @@ type server struct {
 	posts []post
 }
 
-//* Registers root query type
 func (s *server) registerQuery(schema *schemabuilder.Schema) {
 	obj := schema.Query()
 
@@ -58,22 +55,22 @@ func (s *server) schema() *graphql.Schema {
 	s.registerPost(builder)
 	return builder.MustBuild()
 }
-
 func main() {
-		//* Instantiates and builds a server, serves schema on port 3030
-		server := &server{
-			posts: []post{
-				{Title: "first post", Body: "testing", CreatedAt: time.Now()},
-				{Title: "graphql", Body: "did you hear about Thunder?", CreatedAt: time.Now()},
-			},
-		}
+	server := &server{
+		posts: []post{
+			{Title: "first post", Body: "testing", CreatedAt: time.Now()},
+			{Title: "graphql", Body: "did you hear about Thunder?", CreatedAt: time.Now()},
+		},
+	}
 
-		schema := server.schema()
-		introspection.AddIntrospectionToSchema(schema)
+	builderSchema := schemabuilder.NewSchema()
+	server.registerQuery(builderSchema)
+	server.registerMutation(builderSchema)
 
-		//* Expose GraphQL POST endpoint.
-		http.Handle("/graphql", graphql.HTTPHandler(schema))
-		http.Handle("/graphiql/", http.StripPrefix("/graphiql/", graphiql.Handler()))
-		fmt.Println("GraphQL Gateway listening on port :3030")
-		http.ListenAndServe(":3030", nil)
+	valueJSON, err := introspection.ComputeSchemaJSON(*builderSchema)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Print(string(valueJSON))
 }
